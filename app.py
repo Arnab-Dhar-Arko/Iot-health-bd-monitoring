@@ -18,6 +18,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+
+st.info(
+    "This is a thesis prototype for **Analyzing IoT Data for Decision Making** "
+    "(Bangladesh focus). Upload your CSV or use the default sample. "
+    "Repo: https://github.com/Arnab-Dhar-Arko/iot-health-monitoring"
+)
+
+
 # ----------------------------
 # Constants & Paths
 # ----------------------------
@@ -33,6 +41,8 @@ REQUIRED_COLS = ["Time", "HR (bpm)", "SpO₂ (%)", "Temp (°C)"]
 # ----------------------------
 # Helpers
 # ----------------------------
+# extra thi one
+
 def compute_status(hr, spo2, temp, thr_hr=120, thr_spo2=90, thr_temp=38.0):
     """Clinical rule-based status."""
     try:
@@ -129,6 +139,23 @@ def load_resources() -> pd.DataFrame:
         return pd.read_csv(RESOURCES_CSV)
     return pd.DataFrame(columns=["category","title","url","note"])
 
+# ----------
+
+def _sample_df():
+    """24 hours of synthetic IoT vitals for demo/fallback."""
+    now = pd.Timestamp.utcnow().floor("H")
+    t = pd.date_range(now - pd.Timedelta(hours=23), periods=24, freq="H")
+    rng = np.random.default_rng(42)
+    hr   = np.clip(rng.normal(78, 9, size=len(t)), 55, 140).round(1)
+    spo2 = np.clip(rng.normal(96, 1.6, size=len(t)), 88, 100).round(1)
+    temp = np.clip(rng.normal(36.8, 0.35, size=len(t)), 35.5, 39.5).round(1)
+    return pd.DataFrame({
+        "Time": t,
+        "HR (bpm)": hr,
+        "SpO₂ (%)": spo2,
+        "Temp (°C)": temp
+    })
+
 # ----------------------------
 # Sidebar (data + thresholds)
 # ----------------------------
@@ -156,13 +183,18 @@ with st.sidebar.expander("Other options (quick views & exports)", expanded=False
 # ----------------------------
 # Load data
 # ----------------------------
+# ----------------------------
+# Load data
+# ----------------------------
 if uploaded is not None:
     df = load_csv(uploaded)
 else:
     if not DEFAULT_DATA.exists():
-        st.error(f"Dataset not found: {DEFAULT_DATA}")
-        st.stop()
-    df = load_csv(DEFAULT_DATA)
+        st.warning("Default dataset not found in repo; using a synthetic sample (24h).")
+        df = _sample_df()
+    else:
+        df = load_csv(DEFAULT_DATA)
+
 
 # Compute/refresh Status based on current thresholds
 df["Status"] = df.apply(lambda x: compute_status(
